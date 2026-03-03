@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タスク管理 - アイゼンハワーマトリクス</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #2d3748;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 600; }
+    header span { font-size: 1.4rem; }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+    /* 追加フォーム */
+    .add-form {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .add-form h2 { font-size: 1rem; margin-bottom: 14px; color: #555; }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: .75rem; color: #888; }
+    .form-group input[type="text"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: .95rem;
+      width: 240px;
+    }
+    .form-group input[type="text"]:focus { outline: none; border-color: #667eea; }
+    .star-input { display: flex; flex-direction: row-reverse; gap: 2px; }
+    .star-input input { display: none; }
+    .star-input label {
+      font-size: 1.4rem;
+      color: #ddd;
+      cursor: pointer;
+      transition: color .15s;
+    }
+    .star-input input:checked ~ label,
+    .star-input label:hover,
+    .star-input label:hover ~ label { color: #f6ad55; }
+
+    .btn-add {
+      padding: 9px 22px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: .95rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .15s;
+      align-self: flex-end;
+    }
+    .btn-add:hover { background: #5a67d8; }
+
+    /* タブ */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      background: white;
+      cursor: pointer;
+      font-size: .85rem;
+      transition: all .15s;
+    }
+    .tab.active { background: #2d3748; color: white; border-color: #2d3748; }
+
+    /* タスクリスト */
+    .task-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .task-card {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-left: 4px solid #ccc;
+      transition: opacity .2s;
+    }
+    .task-card.done { opacity: .5; }
+    .task-card.q1 { border-color: #fc8181; }
+    .task-card.q2 { border-color: #68d391; }
+    .task-card.q3 { border-color: #f6ad55; }
+    .task-card.q4 { border-color: #a0aec0; }
+
+    .task-badge {
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      white-space: nowrap;
+      min-width: 70px;
+      text-align: center;
+    }
+    .q1 .task-badge { background: #fff5f5; color: #c53030; }
+    .q2 .task-badge { background: #f0fff4; color: #276749; }
+    .q3 .task-badge { background: #fffaf0; color: #c05621; }
+    .q4 .task-badge { background: #f7fafc; color: #718096; }
+
+    .task-name {
+      flex: 1;
+      font-size: .95rem;
+    }
+    .task-name.done-text { text-decoration: line-through; color: #aaa; }
+
+    .task-meta {
+      font-size: .75rem;
+      color: #aaa;
+      white-space: nowrap;
+    }
+
+    .task-actions { display: flex; gap: 6px; }
+    .btn-done, .btn-delete {
+      padding: 5px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    .btn-done { background: #ebf8ff; color: #2b6cb0; }
+    .btn-done:hover { background: #bee3f8; }
+    .btn-delete { background: #fff5f5; color: #c53030; }
+    .btn-delete:hover { background: #fed7d7; }
+
+    .score { font-size: .75rem; color: #aaa; white-space: nowrap; }
+
+    .empty {
+      text-align: center;
+      color: #aaa;
+      padding: 40px;
+      background: white;
+      border-radius: 12px;
+    }
+
+    /* マトリクス表示 */
+    .matrix {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .matrix-cell {
+      background: white;
+      border-radius: 10px;
+      padding: 14px;
+      min-height: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.07);
+    }
+    .matrix-cell h3 {
+      font-size: .8rem;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #eee;
+    }
+    .matrix-cell.mq1 h3 { color: #c53030; border-color: #fc8181; }
+    .matrix-cell.mq2 h3 { color: #276749; border-color: #68d391; }
+    .matrix-cell.mq3 h3 { color: #c05621; border-color: #f6ad55; }
+    .matrix-cell.mq4 h3 { color: #718096; border-color: #a0aec0; }
+    .matrix-item {
+      font-size: .8rem;
+      padding: 3px 0;
+      border-bottom: 1px dashed #f0f0f0;
+      color: #555;
+    }
+
+    @media (max-width: 600px) {
+      .form-group input[type="text"] { width: 100%; }
+      .form-row { flex-direction: column; }
+      .btn-add { width: 100%; }
+      .task-meta { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>📋</span>
+  <h1>タスク管理 — アイゼンハワーマトリクス</h1>
+</header>
+
+<div class="container">
+
+  <!-- 追加フォーム -->
+  <div class="add-form">
+    <h2>タスクを追加</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>タスク名</label>
+        <input type="text" id="taskName" placeholder="例：報告書を提出する" />
+      </div>
+      <div class="form-group">
+        <label>重要度</label>
+        <div class="star-input" id="importanceStars">
+          <input type="radio" name="importance" id="i5" value="5"><label for="i5">★</label>
+          <input type="radio" name="importance" id="i4" value="4"><label for="i4">★</label>
+          <input type="radio" name="importance" id="i3" value="3" checked><label for="i3">★</label>
+          <input type="radio" name="importance" id="i2" value="2"><label for="i2">★</label>
+          <input type="radio" name="importance" id="i1" value="1"><label for="i1">★</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>緊急度</label>
+        <div class="star-input" id="urgencyStars">
+          <input type="radio" name="urgency" id="u5" value="5"><label for="u5">★</label>
+          <input type="radio" name="urgency" id="u4" value="4"><label for="u4">★</label>
+          <input type="radio" name="urgency" id="u3" value="3" checked><label for="u3">★</label>
+          <input type="radio" name="urgency" id="u2" value="2"><label for="u2">★</label>
+          <input type="radio" name="urgency" id="u1" value="1"><label for="u1">★</label>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addTask()">追加</button>
+    </div>
+  </div>
+
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab active" onclick="setView('list', this)">📝 リスト</button>
+    <button class="tab" onclick="setView('matrix', this)">🔲 マトリクス</button>
+    <button class="tab" onclick="setView('all', this)">✅ 完了済み</button>
+  </div>
+
+  <!-- マトリクス表示 -->
+  <div id="matrixView" class="matrix" style="display:none;">
+    <div class="matrix-cell mq1"><h3>Q1 🔴 今すぐやる（重要×緊急）</h3><div id="mq1"></div></div>
+    <div class="matrix-cell mq2"><h3>Q2 🟢 計画する（重要×余裕）</h3><div id="mq2"></div></div>
+    <div class="matrix-cell mq3"><h3>Q3 🟠 委任する（軽め×緊急）</h3><div id="mq3"></div></div>
+    <div class="matrix-cell mq4"><h3>Q4 ⚪ やめる（軽め×余裕）</h3><div id="mq4"></div></div>
+  </div>
+
+  <!-- タスクリスト表示 -->
+  <div id="listView" class="task-list"></div>
+
+</div>
+
+<script>
+  const QUADRANTS = {
+    'q1': { label: 'Q1 今すぐやる', cls: 'q1' },
+    'q2': { label: 'Q2 計画する',   cls: 'q2' },
+    'q3': { label: 'Q3 委任する',   cls: 'q3' },
+    'q4': { label: 'Q4 やめる',     cls: 'q4' },
+  };
+
+  function getQuadrant(importance, urgency) {
+    if (importance >= 3 && urgency >= 3) return 'q1';
+    if (importance >= 3 && urgency < 3)  return 'q2';
+    if (importance < 3  && urgency >= 3) return 'q3';
+    return 'q4';
+  }
+
+  function loadTasks() {
+    return JSON.parse(localStorage.getItem('tasks') || '[]');
+  }
+
+  function saveTasks(tasks) {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }
+
+  function addTask() {
+    const name = document.getElementById('taskName').value.trim();
+    if (!name) { alert('タスク名を入力してください。'); return; }
+    const importance = parseInt(document.querySelector('input[name="importance"]:checked').value);
+    const urgency    = parseInt(document.querySelector('input[name="urgency"]:checked').value);
+    const tasks = loadTasks();
+    const id = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+    tasks.push({
+      id, name, importance, urgency,
+      priority: importance * urgency,
+      quadrant: getQuadrant(importance, urgency),
+      created: new Date().toLocaleDateString('ja-JP'),
+      done: false,
+    });
+    saveTasks(tasks);
+    document.getElementById('taskName').value = '';
+    render();
+  }
+
+  function completeTask(id) {
+    const tasks = loadTasks();
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = true; saveTasks(tasks); render(); }
+  }
+
+  function deleteTask(id) {
+    saveTasks(loadTasks().filter(t => t.id !== id));
+    render();
+  }
+
+  let currentView = 'list';
+
+  function setView(view, el) {
+    currentView = view;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    render();
+  }
+
+  function render() {
+    const tasks = loadTasks();
+    const listView   = document.getElementById('listView');
+    const matrixView = document.getElementById('matrixView');
+
+    if (currentView === 'matrix') {
+      listView.style.display = 'none';
+      matrixView.style.display = 'grid';
+      ['q1','q2','q3','q4'].forEach(q => {
+        const el = document.getElementById('m' + q);
+        const items = tasks.filter(t => !t.done && t.quadrant === q);
+        el.innerHTML = items.length
+          ? items.map(t => `<div class="matrix-item">・${t.name}</div>`).join('')
+          : '<div class="matrix-item" style="color:#ccc">なし</div>';
+      });
+      return;
+    }
+
+    matrixView.style.display = 'none';
+    listView.style.display = 'flex';
+
+    const showDone = currentView === 'all';
+    const active = tasks
+      .filter(t => showDone ? t.done : !t.done)
+      .sort((a, b) => b.priority - a.priority);
+
+    if (!active.length) {
+      listView.innerHTML = '<div class="empty">タスクがありません</div>';
+      return;
+    }
+
+    listView.innerHTML = active.map(t => {
+      const q = QUADRANTS[t.quadrant];
+      return `
+        <div class="task-card ${q.cls} ${t.done ? 'done' : ''}">
+          <span class="task-badge">${q.label}</span>
+          <span class="task-name ${t.done ? 'done-text' : ''}">${escHtml(t.name)}</span>
+          <span class="score">スコア ${t.priority}</span>
+          <span class="task-meta">${t.created}</span>
+          <div class="task-actions">
+            ${!t.done ? `<button class="btn-done" onclick="completeTask(${t.id})">完了</button>` : ''}
+            <button class="btn-delete" onclick="deleteTask(${t.id})">削除</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Enterキーで追加
+  document.getElementById('taskName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  render();
+</script>
+</body>
+</html>
